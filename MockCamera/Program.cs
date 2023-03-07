@@ -14,15 +14,15 @@ async Task Echo(TcpClient client)
 {
     await using var clientStream = client.GetStream();
     var buffer = new byte[128];
-    var request = string.Empty;
+    var request = new StringBuilder();
     
     while (await clientStream.ReadAsync(buffer) != 0)
     {
         var reqPart = Encoding.UTF8.GetString(buffer, 0, buffer.Length);
-        request += reqPart;
-        //Console.WriteLine(reqPart);
+        request.Append(reqPart);
+        Console.WriteLine(reqPart);
 
-        if (request.Contains($"{Environment.NewLine}{Environment.NewLine}"))
+        if (reqPart.Contains($"{Environment.NewLine}{Environment.NewLine}"))
         {
             var okResponse = $"HTTP/1.1 200 OK{Environment.NewLine}{Environment.NewLine}";
             var response = Encoding.UTF8.GetBytes(okResponse);
