@@ -2,28 +2,29 @@
 using System.Net.Sockets;
 using System.Text;
 
-var tcpListener = new TcpListener(new IPAddress(new byte[4]{0,0,0,0}), 9898);
+var tcpListener = new TcpListener(new IPAddress(new byte[]{0,0,0,0}), 9898);
 tcpListener.Start();
 while (true)
 {
     var client = await tcpListener.AcceptTcpClientAsync();
+    
     await Task.Run(() => Echo(client));
 }
 
 async Task Echo(TcpClient client)
 {
     await using var clientStream = client.GetStream();
-    var buffer = new byte[128];
-    var request = new StringBuilder();
-    
-    while (await clientStream.ReadAsync(buffer) != 0)
+    var buffer = new byte[256];
+    var request = string.Empty; 
+    int read;
+    while ((read = await clientStream.ReadAsync(buffer)) != 0)
     {
-        var reqPart = Encoding.UTF8.GetString(buffer, 0, buffer.Length);
-        request.Append(reqPart);
-        Console.WriteLine(reqPart);
+        request += Encoding.UTF8.GetString(buffer, 0, read);
+        Array.Clear(buffer, 0, buffer.Length);
 
-        if (reqPart.Contains($"{Environment.NewLine}{Environment.NewLine}"))
+        if (request.Contains("\r\n\r\n"))
         {
+            Console.Write(request);
             var okResponse = $"HTTP/1.1 200 OK{Environment.NewLine}{Environment.NewLine}";
             var response = Encoding.UTF8.GetBytes(okResponse);
             await clientStream.WriteAsync(response);
