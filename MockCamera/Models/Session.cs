@@ -38,14 +38,14 @@ public class Session
 
             if (requestData.Contains("\r\n\r\n"))
             {
-                Console.Write(requestData);
-
                 var request = new RtspRequest(requestData);
-                Console.WriteLine(request.Url);
-                Console.WriteLine(request.Protocol);
-                Console.WriteLine(request.Method);
-                Console.WriteLine(request.SequenceNumber);
-                Console.WriteLine(string.Join(", ", request.Headers));
+                
+                Console.WriteLine($"OriginalUrl: {request.Url}");
+                Console.WriteLine($"Protocol: {request.Protocol}");
+                Console.WriteLine($"Method:{request.Method}");
+                Console.WriteLine($"CSeq:{request.SequenceNumber}");
+                Console.WriteLine(string.Join("\r\n", request.Headers));
+                
                 var okResponse = $"RTSP/1.0 200 OK{Environment.NewLine}{Environment.NewLine}";
                 var response = Encoding.UTF8.GetBytes(okResponse);
                 await clientStream.WriteAsync(response);

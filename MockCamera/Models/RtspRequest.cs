@@ -16,7 +16,8 @@ public class RtspRequest
             throw new ArgumentException("Incoming request raw data is null or whitespace");
         }
 
-        var rows = rawRequestData.Split("\r\n");
+        var startIndex = rawRequestData.IndexOf("\r\n\r\n", StringComparison.Ordinal);
+        var rows = rawRequestData.Remove(startIndex).Split("\r\n");
         
         // rows[0] - METHOD url Protocol
         var mainRequestData = rows[0].Split(" ");
@@ -34,14 +35,14 @@ public class RtspRequest
         Method = method;
         Protocol = mainRequestData[^1];
         Url = mainRequestData[1];
-
-        // last el == \r\n. First el is parsed already
-        foreach (var row in rows.Skip(1).Take(rows.Length - 2))
+        
+        foreach (var row in rows.Skip(1))
         {
             var header = row.Split(":").Select(r => r.Trim()).ToArray();
             if (header.Length != 2)
             {
                 // exception
+                continue;
             }
             
             if (header[0] == "CSeq")
