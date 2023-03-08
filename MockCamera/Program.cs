@@ -17,6 +17,7 @@ async Task Echo(TcpClient client)
     var buffer = new byte[256];
     var request = string.Empty; 
     int read;
+    
     while ((read = await clientStream.ReadAsync(buffer)) != 0)
     {
         request += Encoding.UTF8.GetString(buffer, 0, read);
