@@ -1,37 +1,20 @@
 ﻿using System.Net;
 using System.Net.Sockets;
-using System.Text;
+using MockCamera.Models;
 
-var tcpListener = new TcpListener(new IPAddress(new byte[]{0,0,0,0}), 9898);
+const int portNumber = 9898;
+var tokenSource = new CancellationTokenSource();
+var tcpListener = new TcpListener(new IPAddress(new byte[]{0,0,0,0}), portNumber);
 tcpListener.Start();
-while (true)
+
+Console.WriteLine("App started");
+Console.WriteLine($"Main port binded on: {portNumber}");
+
+while (!tokenSource.IsCancellationRequested)
 {
     var client = await tcpListener.AcceptTcpClientAsync();
-    
-    await Task.Run(() => Echo(client));
+    var session = new Session(client);
+    await Task.Run(() => session.StartSession(tokenSource.Token));
 }
 
-async Task Echo(TcpClient client)
-{
-    await using var clientStream = client.GetStream();
-    var buffer = new byte[256];
-    var request = string.Empty; 
-    int read;
-    while ((read = await clientStream.ReadAsync(buffer)) != 0)
-    {
-        request += Encoding.UTF8.GetString(buffer, 0, read);
-        Array.Clear(buffer, 0, buffer.Length);
-
-        if (request.Contains("\r\n\r\n"))
-        {
-            Console.Write(request);
-            var okResponse = $"HTTP/1.1 200 OK{Environment.NewLine}{Environment.NewLine}";
-            var response = Encoding.UTF8.GetBytes(okResponse);
-            await clientStream.WriteAsync(response);
-            break;
-        }
-    }
-    
-    client.Close();
-    client.Dispose();
-}
+Console.WriteLine("App main loop ended. Good bye!");
