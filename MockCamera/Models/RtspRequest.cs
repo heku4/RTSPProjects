@@ -26,10 +26,10 @@ public class RtspRequest
             throw new Exception($"Main request data is not valid: '{rows[0]}'");
         }
         
-        var methodParsed = Enum.TryParse<RtspMethod>(rows[0], out var method);
+        var methodParsed = Enum.TryParse<RtspMethod>(mainRequestData[0], out var method);
         if (!methodParsed)
         {
-            // exception
+            throw new Exception($"Can't parse request method: '{rows[0] ?? string.Empty}'");
         }
 
         Method = method;
@@ -38,11 +38,11 @@ public class RtspRequest
         
         foreach (var row in rows.Skip(1))
         {
-            var header = row.Split(":").Select(r => r.Trim()).ToArray();
+            var header = row.Split(":", 2).Select(r => r.Trim()).ToArray();
             if (header.Length != 2)
             {
-                // exception
-                continue;
+                throw new Exception($"Can't parse request header: '{row}'");
+                // continue;
             }
             
             if (header[0] == "CSeq")
@@ -50,7 +50,7 @@ public class RtspRequest
                 var seqParsed = int.TryParse(header[1], out var number);
                 if (!seqParsed)
                 {
-                    //exception
+                    throw new Exception($"Can't parse CSeq number: '{row}'");
                 }
                 
                 SequenceNumber = number;

@@ -5,33 +5,21 @@ namespace MockCamera.Models;
 
 public class Session
 {
-    private int _sequenceNumber;
     private readonly TcpClient _client;
 
     public Session(TcpClient client)
     {
         _client = client;
-        _sequenceNumber = 0;
     }
 
-    public void SetSequence(int number)
-    {
-        _sequenceNumber = number;
-    }
-
-    public int GetSequence()
-    {
-        return _sequenceNumber;
-    }
-
-    public async Task StartSession()
+    public async Task StartSession(CancellationToken stoppingToken)
     {
         await using var clientStream = _client.GetStream();
         var buffer = new byte[256];
         var requestData = string.Empty; 
         int read;
     
-        while ((read = await clientStream.ReadAsync(buffer)) != 0)
+        while ((read = await clientStream.ReadAsync(buffer, stoppingToken)) != 0)
         {
             requestData += Encoding.UTF8.GetString(buffer, 0, read);
             Array.Clear(buffer, 0, buffer.Length);
@@ -48,7 +36,7 @@ public class Session
                 
                 var okResponse = $"RTSP/1.0 200 OK{Environment.NewLine}{Environment.NewLine}";
                 var response = Encoding.UTF8.GetBytes(okResponse);
-                await clientStream.WriteAsync(response);
+                await clientStream.WriteAsync(response, stoppingToken);
                 break;
             }
         }
