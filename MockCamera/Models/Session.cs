@@ -28,13 +28,9 @@ public class Session
             {
                 var request = new RtspRequest(requestData);
                 
-                Console.WriteLine($"OriginalUrl: {request.Url}");
-                Console.WriteLine($"Protocol: {request.Protocol}");
-                Console.WriteLine($"Method:{request.Method}");
-                Console.WriteLine($"CSeq:{request.SequenceNumber}");
-                Console.WriteLine(string.Join("\r\n", request.Headers));
-                
-                var okResponse = $"RTSP/1.0 200 OK{Environment.NewLine}{Environment.NewLine}";
+                Console.WriteLine(request.ToString());
+
+                var okResponse = $"RTSP/1.0 200 OK\r\n\r\n";
                 var response = Encoding.UTF8.GetBytes(okResponse);
                 await clientStream.WriteAsync(response, stoppingToken);
                 break;
