@@ -30,7 +30,7 @@ public class Session
                 
                 Console.WriteLine(request.ToString());
 
-                var okResponse = $"RTSP/1.0 200 OK{Environment.NewLine}{Environment.NewLine}";
+                var okResponse = $"RTSP/1.0 200 OK\r\n\r\n";
                 var response = Encoding.UTF8.GetBytes(okResponse);
                 await clientStream.WriteAsync(response, stoppingToken);
                 break;

@@ -1,13 +1,9 @@
 namespace MockCamera.Models;
 
-public class RtspRequest
+public class RtspRequest: RtspMessage
 {
-    public string Protocol { get; init; }
     public string Url { get; init; }
-    public  int SequenceNumber { get; init; }
-    public RtspMethod Method { get; init; }
-    public Dictionary<string, string> Headers { get; init; } = new Dictionary<string, string>();
-
+    
     public RtspRequest(string rawRequestData)
     {
         // divide by rows
@@ -29,7 +25,7 @@ public class RtspRequest
         var methodParsed = Enum.TryParse<RtspMethod>(mainRequestData[0], out var method);
         if (!methodParsed)
         {
-            throw new Exception($"Can't parse request method: '{rows[0] ?? string.Empty}'");
+            throw new Exception($"Can't parse request method: '{rows[0]}'");
         }
 
         Method = method;
@@ -59,20 +55,5 @@ public class RtspRequest
 
             Headers.Add(header[0], header[1]);
         }
-    }
-
-    public override string ToString()
-    {
-        var request = this;
-            var result = @$"
-OriginalUrl: {request.Url}
-Protocol: {request.Protocol}
-Method:{request.Method}
-CSeq:{request.SequenceNumber}
-Headers:
-{string.Join("\r\n", request.Headers)}
-";
-            
-        return result;
     }
 }
