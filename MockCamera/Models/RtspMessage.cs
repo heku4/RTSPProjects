@@ -3,7 +3,7 @@ namespace MockCamera.Models;
 
 public abstract class RtspMessage
 {
-    public string Protocol { get; init; }
+    public string Protocol { get; init; } = null!;
     public  int SequenceNumber { get; init; }
     public RtspMethod Method { get; init; }
     public Dictionary<string, string> Headers { get; } = new Dictionary<string, string>();
@@ -14,8 +14,8 @@ public abstract class RtspMessage
 
         var result = @$"
 Protocol: {rtspMessage.Protocol}
-Method:{rtspMessage.Method}
-CSeq:{rtspMessage.SequenceNumber}";
+Method: {rtspMessage.Method}
+CSeq: {rtspMessage.SequenceNumber}";
 
         if (rtspMessage.Headers.Any())
         {
