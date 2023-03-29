@@ -19,5 +19,5 @@ while (!tokenSource.IsCancellationRequested)
 {
     var client = await tcpListener.AcceptTcpClientAsync();
     var session = new Session(client);
-    await Task.Run(() => session.StartSession(tokenSource.Token), tokenSource.Token);
+    await Task.Run(() => session.StartSession(tokenSource), tokenSource.Token);
 }
