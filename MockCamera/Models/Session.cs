@@ -89,7 +89,7 @@ a=control:1";
         
         var headers = new Dictionary<string, string> { { "Public", String.Join(", ", supportedMethods) } };
 
-        var response = new RtspResponse(request, headers, ContentData,200);
+        var response = new RtspResponse(request, headers, null,200);
 
         return response;
     }
@@ -118,7 +118,7 @@ a=control:1";
             { "Transport", $"{request.Headers["Transport"]};server_port:{7057}-{7058}" }
         };
         
-        var response = new RtspResponse(request, headers, null, 200);
+        var response = new RtspResponse(request, headers, ContentData, 200);
 
         return response;
     }

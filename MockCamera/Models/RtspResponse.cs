@@ -17,6 +17,8 @@ public class RtspResponse: RtspMessage
             Headers.Add(pair.Key, pair.Value);
         }
 
+        Body = bodyData;
+        
         StatusCode = statusCode;
         ReasonPhrase = statusCode == 200 ? "OK" : string.Empty;
     }
@@ -25,22 +27,22 @@ public class RtspResponse: RtspMessage
     {
         var rtspResponse = this;
 
-        var result = $"{rtspResponse.Protocol} {StatusCode} {ReasonPhrase}\r\n" +
-            $"CSeq: {rtspResponse.SequenceNumber}\r\n";
+        var result = $"{rtspResponse.Protocol} {StatusCode} {ReasonPhrase}{Environment.NewLine}" +
+            $"CSeq: {rtspResponse.SequenceNumber}{Environment.NewLine}";
 
         if (rtspResponse.Headers.Any())
         {
             foreach (var pair in rtspResponse.Headers)
             {
-                result += $"{pair.Key}: {pair.Value}\r\n";   
+                result += $"{pair.Key}: {pair.Value}{Environment.NewLine}";   
             }
         }
-
-        result += "\r\n";
         
+        result += $"{Environment.NewLine}";
+
         if (!string.IsNullOrWhiteSpace(rtspResponse.Body))
         {
-            result += $"{rtspResponse.Body}";
+            result += $"{rtspResponse.Body}{Environment.NewLine}{Environment.NewLine}";
         }
         
         return result;
