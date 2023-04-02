@@ -6,7 +6,7 @@ namespace MockCamera.Models;
 public class Session
 {
     private readonly TcpClient _client;
-    private uint _sessionCounter;
+    private uint _sessionCounter = 1;
 
     private const string ContentData = @"v=0
 m=video 0 RTP/AVP 26
@@ -26,7 +26,7 @@ a=control:1";
     
         while ((read = await clientStream.ReadAsync(buffer, tokenSource.Token)) != 0)
         {
-            requestData += Encoding.UTF8.GetString(buffer, 0, read);
+            requestData += Encoding.Default.GetString(buffer, 0, read);
             Array.Clear(buffer, 0, buffer.Length);
 
             if (requestData.Contains("\r\n\r\n"))
@@ -40,7 +40,7 @@ a=control:1";
                 Console.WriteLine(rtspResponse.Format());
                 
                 var response = Encoding.UTF8.GetBytes(rtspResponse.Format());
-                
+
                 await clientStream.WriteAsync(response, tokenSource.Token);
 
                 if (rtspResponse.Method == RtspMethod.TEARDOWN)
@@ -105,7 +105,7 @@ a=control:1";
             { "Content-Length", contentLength.ToString() }
         };
 
-        var response = new RtspResponse(request, headers, null, 200);
+        var response = new RtspResponse(request, headers, ContentData, 200);
 
         return response;
     }
@@ -118,7 +118,7 @@ a=control:1";
             { "Transport", $"{request.Headers["Transport"]};server_port:{7057}-{7058}" }
         };
         
-        var response = new RtspResponse(request, headers, ContentData, 200);
+        var response = new RtspResponse(request, headers, null, 200);
 
         return response;
     }
@@ -139,6 +139,6 @@ a=control:1";
 
     private uint GetSessionNumber()
     {
-        return _sessionCounter++;//4346886530419407805
+        return _sessionCounter++;
     }
 }

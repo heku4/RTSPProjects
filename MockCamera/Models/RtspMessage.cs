@@ -6,7 +6,7 @@ public abstract class RtspMessage
     public string Protocol { get; init; } = null!;
     public  int SequenceNumber { get; init; }
     public RtspMethod Method { get; init; }
-    public Dictionary<string, string> Headers { get; } = new Dictionary<string, string>();
+    public Dictionary<string, string> Headers { get; } = new ();
 
     public override string ToString()
     {
@@ -19,7 +19,7 @@ CSeq: {rtspMessage.SequenceNumber}";
 
         if (rtspMessage.Headers.Any())
         {
-            result += $"\r\nHeaders:\r\n{string.Join("\r\n", rtspMessage.Headers)}\r\n";
+            result += $"{Environment.NewLine}Headers:\r\n{string.Join($"{Environment.NewLine}", rtspMessage.Headers)}{Environment.NewLine}";
         }
             
         return result;
