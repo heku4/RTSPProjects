@@ -20,31 +20,31 @@ public class RtspResponse: RtspMessage
         Body = bodyData;
         
         StatusCode = statusCode;
-        ReasonPhrase = statusCode == 200 ? "OK" : string.Empty;
+        ReasonPhrase = statusCode == 200 ? "OK" : "Bad Request";
     }
 
     public string Format()
     {
         var rtspResponse = this;
 
-        var result = $"{rtspResponse.Protocol} {StatusCode} {ReasonPhrase}{Environment.NewLine}" +
-            $"CSeq: {rtspResponse.SequenceNumber}{Environment.NewLine}";
-
+        var result = $"{rtspResponse.Protocol} {StatusCode} {ReasonPhrase}\n" +
+            $"CSeq: {rtspResponse.SequenceNumber}\n";
         if (rtspResponse.Headers.Any())
         {
             foreach (var pair in rtspResponse.Headers)
             {
-                result += $"{pair.Key}: {pair.Value}{Environment.NewLine}";   
+                result += $"{pair.Key}: {pair.Value}\n";   
             }
         }
-        
-        result += $"{Environment.NewLine}";
 
         if (!string.IsNullOrWhiteSpace(rtspResponse.Body))
         {
-            result += $"{rtspResponse.Body}{Environment.NewLine}{Environment.NewLine}";
+            result += $"Content-Length: {rtspResponse.Body.Length + 4}\n\n";
+            result += $"{rtspResponse.Body}\n";
         }
         
+        result += "\n";
+
         return result;
     }
 }

@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
@@ -6,15 +7,24 @@ namespace MockCamera.Models;
 public class Session
 {
     private readonly TcpClient _client;
-    private uint _sessionCounter = 1;
+    private static readonly Random Rand = new Random();
+    private readonly ulong _sessionId;
+    private readonly int _udpPort1;
+    private readonly int _udpPort2;
+    private bool _isStreaming = false;
+    private int _clientRtpPort;
+    private int _clientRtcpPort;
 
     private const string ContentData = @"v=0
 m=video 0 RTP/AVP 26
 a=control:1";
 
-    public Session(TcpClient client)
+    public Session(TcpClient client, int udpPort1, int udpPort2)
     {
         _client = client;
+        _sessionId = (ulong) Rand.NextInt64(1, Int64.MaxValue);
+        _udpPort1 = udpPort1;
+        _udpPort2 = udpPort2;
     }
 
     public async Task StartSession(CancellationTokenSource tokenSource)
@@ -26,7 +36,7 @@ a=control:1";
     
         while ((read = await clientStream.ReadAsync(buffer, tokenSource.Token)) != 0)
         {
-            requestData += Encoding.Default.GetString(buffer, 0, read);
+            requestData += Encoding.UTF8.GetString(buffer, 0, read);
             Array.Clear(buffer, 0, buffer.Length);
 
             if (requestData.Contains("\r\n\r\n"))
@@ -41,8 +51,21 @@ a=control:1";
                 
                 var response = Encoding.UTF8.GetBytes(rtspResponse.Format());
 
+                #region DEBUG
+
+                Console.ForegroundColor = ConsoleColor.DarkRed;
+                Console.WriteLine($"DEBUG LEVEL: {string.Join(" ", response)}");
+                Console.ForegroundColor = ConsoleColor.DarkCyan;
+
+                #endregion
+                
                 await clientStream.WriteAsync(response, tokenSource.Token);
 
+                if (_isStreaming)
+                {
+                    await SendRtpPacket();
+                }
+                
                 if (rtspResponse.Method == RtspMethod.TEARDOWN)
                 {
                     tokenSource.Cancel();
@@ -68,11 +91,14 @@ a=control:1";
             case RtspMethod.SETUP:
                 rtspResponse = HandleSetupRequest(request);
                 break;
+            case RtspMethod.PLAY:
+                rtspResponse = HandlePlayRequest(request);
+                break;
             case RtspMethod.TEARDOWN:
                 rtspResponse = HandleTeardownRequest(request);
                 break;
             default:
-                rtspResponse = new RtspResponse(request, new Dictionary<string, string>(), null, 200);
+                rtspResponse = new RtspResponse(request, new Dictionary<string, string>(), null, 400);
                 break;
         }
         
@@ -96,13 +122,10 @@ a=control:1";
     
     private RtspResponse HandleDescribeRequest(RtspRequest request)
     {
-        var contentLength = ContentData.Length;
-
         var headers = new Dictionary<string, string>
         {
             { "Content-Base", "rtsp://localhost:9898" },
-            { "Content-type", "application/sdp" },
-            { "Content-Length", contentLength.ToString() }
+            { "Content-type", "application/sdp" }
         };
 
         var response = new RtspResponse(request, headers, ContentData, 200);
@@ -112,14 +135,54 @@ a=control:1";
     
     private RtspResponse HandleSetupRequest(RtspRequest request)
     {
+
+        var statusCode = 200;
+        var headers = new Dictionary<string, string>();
+        
+        var clientPortsHeaderData = request.Headers["Transport"].Trim().Split("=");
+        if (clientPortsHeaderData.Length != 2)
+        {
+            return new RtspResponse(request, headers, null, 400);
+        }
+
+        var ports = clientPortsHeaderData[^1].Split("-");
+        
+        if (ports.Length != 2)
+        {
+            return new RtspResponse(request, headers, null, 400);
+        }
+
+        try
+        {
+            _clientRtpPort = Convert.ToInt32(ports[0]);
+            _clientRtcpPort = Convert.ToInt32(ports[1]);
+
+        }
+        catch
+        {
+            return new RtspResponse(request, headers, null, 400);
+        }
+
+        headers.Add("Session", _sessionId.ToString());
+        headers.Add("Transport", $"{request.Headers["Transport"]};server_port:{_udpPort1}-{_udpPort2}");
+
+        var response = new RtspResponse(request, headers, null, statusCode);
+
+        return response;
+    }
+    
+    private RtspResponse HandlePlayRequest(RtspRequest request)
+    {
         var headers = new Dictionary<string, string>
         {
-            { "Session", GetSessionNumber().ToString() },
+            { "Session", _sessionId.ToString() },
             { "Transport", $"{request.Headers["Transport"]};server_port:{7057}-{7058}" }
         };
         
         var response = new RtspResponse(request, headers, null, 200);
 
+        _isStreaming = true;
+        
         return response;
     }
     
@@ -134,11 +197,30 @@ a=control:1";
 
         var response = new RtspResponse(request, headers, null, 200);
 
+        _isStreaming = false;
+        
         return response;
     }
 
-    private uint GetSessionNumber()
+    private async Task SendRtpPacket()
     {
-        return _sessionCounter++;
+        using var udpWriter = new UdpClient(_clientRtpPort, AddressFamily.Packet);
+        uint packNumber = 0;
+        var changeFlag = false;
+        
+        Console.WriteLine($"Starting send packets on {_sessionId}");
+        
+        while (_isStreaming)
+        {
+            uint timeStamp = 3600;
+
+            var dataToSend = RtpPacket.Prepare(timeStamp, packNumber, changeFlag);
+            await udpWriter.Client.SendAsync(dataToSend);
+            changeFlag = !changeFlag;
+
+            await Task.Delay(40 * 3600);
+        }
+        
+        Console.WriteLine($"Stopping send packets on {_sessionId}");
     }
 }
