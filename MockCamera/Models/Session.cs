@@ -9,8 +9,6 @@ public class Session
     private readonly TcpClient _client;
     private static readonly Random Rand = new Random();
     private readonly ulong _sessionId;
-    private readonly int _udpPort1;
-    private readonly int _udpPort2;
     private bool _isStreaming = false;
     private int _clientRtpPort;
     private int _clientRtcpPort;
@@ -23,8 +21,8 @@ a=control:1";
     {
         _client = client;
         _sessionId = (ulong) Rand.NextInt64(1, Int64.MaxValue);
-        _udpPort1 = udpPort1;
-        _udpPort2 = udpPort2;
+        _clientRtpPort = udpPort1;
+        _clientRtcpPort = udpPort2;
     }
 
     public async Task StartSession(CancellationTokenSource tokenSource)
@@ -37,12 +35,22 @@ a=control:1";
         while ((read = await clientStream.ReadAsync(buffer, tokenSource.Token)) != 0)
         {
             requestData += Encoding.UTF8.GetString(buffer, 0, read);
+            
+            #region DEBUG raw request
+
+            Console.ForegroundColor = ConsoleColor.DarkMagenta;
+            Console.Write($"DEBUG LEVEL REQUEST: {BitConverter.ToString(buffer[0..read]).Replace("-", " ")}");
+            Console.ForegroundColor = ConsoleColor.DarkCyan;
+
+            #endregion
+            
             Array.Clear(buffer, 0, buffer.Length);
 
             if (requestData.Contains("\r\n\r\n"))
             {
                 var request = new RtspRequest(requestData);
 
+                Console.WriteLine();
                 Console.WriteLine(requestData);
 
                 var rtspResponse = HandleRequest(request);
@@ -54,7 +62,7 @@ a=control:1";
                 #region DEBUG
 
                 Console.ForegroundColor = ConsoleColor.DarkRed;
-                Console.WriteLine($"DEBUG LEVEL: {string.Join(" ", response)}");
+                Console.WriteLine($"DEBUG LEVEL RESPONSE: {BitConverter.ToString(response).Replace("-", " ")}");
                 Console.ForegroundColor = ConsoleColor.DarkCyan;
 
                 #endregion
@@ -98,7 +106,7 @@ a=control:1";
                 rtspResponse = HandleTeardownRequest(request);
                 break;
             default:
-                rtspResponse = new RtspResponse(request, new Dictionary<string, string>(), null, 400);
+                rtspResponse = new RtspResponse(request, new Dictionary<string, string>(), null, 404);
                 break;
         }
         
@@ -113,7 +121,7 @@ a=control:1";
             RtspMethod.PLAY.ToString(), RtspMethod.TEARDOWN.ToString()
         };
         
-        var headers = new Dictionary<string, string> { { "Public", String.Join(", ", supportedMethods) } };
+        var headers = new Dictionary<string, string> { { "Public", string.Join(", ", supportedMethods) } };
 
         var response = new RtspResponse(request, headers, null,200);
 
@@ -164,7 +172,7 @@ a=control:1";
         }
 
         headers.Add("Session", _sessionId.ToString());
-        headers.Add("Transport", $"{request.Headers["Transport"]};server_port:{_udpPort1}-{_udpPort2}");
+        headers.Add("Transport", $"{request.Headers["Transport"]};server_port:{_clientRtpPort}-{_clientRtcpPort}");
 
         var response = new RtspResponse(request, headers, null, statusCode);
 

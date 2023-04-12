@@ -20,30 +20,37 @@ public class RtspResponse: RtspMessage
         Body = bodyData;
         
         StatusCode = statusCode;
-        ReasonPhrase = statusCode == 200 ? "OK" : "Bad Request";
+
+        ReasonPhrase = statusCode switch
+        {
+            200 => "OK",
+            400 => "Bad Request",
+            404 => "Not Found",
+            _ => "Not Found"
+        };
     }
 
     public string Format()
     {
         var rtspResponse = this;
 
-        var result = $"{rtspResponse.Protocol} {StatusCode} {ReasonPhrase}\n" +
-            $"CSeq: {rtspResponse.SequenceNumber}\n";
+        var result = $"{rtspResponse.Protocol} {StatusCode} {ReasonPhrase}\r\n" +
+            $"CSeq: {rtspResponse.SequenceNumber}\r\n";
         if (rtspResponse.Headers.Any())
         {
             foreach (var pair in rtspResponse.Headers)
             {
-                result += $"{pair.Key}: {pair.Value}\n";   
+                result += $"{pair.Key}: {pair.Value}\r\n";   
             }
         }
 
         if (!string.IsNullOrWhiteSpace(rtspResponse.Body))
         {
-            result += $"Content-Length: {rtspResponse.Body.Length + 4}\n\n";
-            result += $"{rtspResponse.Body}\n";
+            result += $"Content-Length: {rtspResponse.Body.Length + 4}\r\n\r\n";
+            result += $"{rtspResponse.Body}\r\n";
         }
         
-        result += "\n";
+        result += "\r\n";
 
         return result;
     }
