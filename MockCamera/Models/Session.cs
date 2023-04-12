@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -25,6 +26,11 @@ a=control:1";
         _clientRtcpPort = udpPort2;
     }
 
+    public ulong GetSessionId()
+    {
+        return _sessionId;
+    }
+
     public async Task StartSession(CancellationTokenSource tokenSource)
     {
         await using var clientStream = _client.GetStream();
@@ -35,14 +41,17 @@ a=control:1";
         while ((read = await clientStream.ReadAsync(buffer, tokenSource.Token)) != 0)
         {
             requestData += Encoding.UTF8.GetString(buffer, 0, read);
-            
-            #region DEBUG raw request
 
-            Console.ForegroundColor = ConsoleColor.DarkMagenta;
-            Console.Write($"DEBUG LEVEL REQUEST: {BitConverter.ToString(buffer[0..read]).Replace("-", " ")}");
-            Console.ForegroundColor = ConsoleColor.DarkCyan;
+            if (Debugger.IsAttached)
+            {
+                #region DEBUG raw request
 
-            #endregion
+                Console.ForegroundColor = ConsoleColor.DarkMagenta;
+                Console.Write($"DEBUG LEVEL REQUEST: {BitConverter.ToString(buffer[0..read]).Replace("-", " ")}");
+                Console.ForegroundColor = ConsoleColor.DarkCyan;
+
+                #endregion
+            }
             
             Array.Clear(buffer, 0, buffer.Length);
 
@@ -55,18 +64,22 @@ a=control:1";
 
                 var rtspResponse = HandleRequest(request);
                 
-                Console.WriteLine(rtspResponse.Format());
                 
                 var response = Encoding.UTF8.GetBytes(rtspResponse.Format());
 
                 #region DEBUG
 
-                Console.ForegroundColor = ConsoleColor.DarkRed;
-                Console.WriteLine($"DEBUG LEVEL RESPONSE: {BitConverter.ToString(response).Replace("-", " ")}");
-                Console.ForegroundColor = ConsoleColor.DarkCyan;
+                if (Debugger.IsAttached)
+                {
+                    Console.ForegroundColor = ConsoleColor.DarkRed;
+                    Console.WriteLine($"DEBUG LEVEL RESPONSE: {BitConverter.ToString(response).Replace("-", " ")}");
+                    Console.ForegroundColor = ConsoleColor.DarkCyan;
 
+                }
+                
                 #endregion
                 
+                Console.WriteLine(rtspResponse.Format());
                 await clientStream.WriteAsync(response, tokenSource.Token);
 
                 if (_isStreaming)
@@ -77,9 +90,8 @@ a=control:1";
                 if (rtspResponse.Method == RtspMethod.TEARDOWN)
                 {
                     tokenSource.Cancel();
+                    break;
                 }
-                
-                break;
             }
         }
     }
