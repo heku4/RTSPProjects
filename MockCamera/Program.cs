@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Net.Sockets;
 using MockCamera.Models;
+using MockCamera.Services;
 
 const int mainPortNumber = 9898;
 const int udpPortNumber1 = 10897;
@@ -20,11 +21,22 @@ Console.WriteLine($"UDP port for RTCP bound on: {udpPortNumber2}");
 
 Console.ForegroundColor = ConsoleColor.DarkCyan;
 
+var queueHandler = new PlayQueueHandler(1);
+var packetSender = new UdpPacketSender(queueHandler);
+
+Thread StartTheThread(CancellationToken param1) {
+    var t = new Thread(() => packetSender.SendRtpPacket(param1));
+    t.Start();
+    return t;
+}
+
+StartTheThread(tokenSource.Token);
+
 while (!tokenSource.IsCancellationRequested)
     try
     {
         var client = await tcpListener.AcceptTcpClientAsync();
-        var session = new Session(client, mainPortNumber, udpPortNumber1, udpPortNumber2);
+        var session = new Session(client, mainPortNumber, udpPortNumber1, udpPortNumber2, queueHandler);
 
         Console.WriteLine(
             $"{Environment.NewLine}Session {session.GetSessionId()} started at: {DateTime.Now}{Environment.NewLine}");

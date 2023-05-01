@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using MockCamera.Services;
 
 namespace MockCamera.Models;
 
@@ -13,18 +14,22 @@ public class Session
     private readonly int _servicePort;
     private int _clientRtpPort;
     private int _clientRtcpPort;
-
+    private readonly int _serviceRtpPort;
+    private readonly int _serviceRtcpPort;
+    private readonly PlayQueueHandler _playQueueHandler;
+    
     private const string ContentData = @"v=0
 m=video 0 RTP/AVP 26
 a=control:1";
 
-    public Session(TcpClient client, int servicePort, int udpPort1, int udpPort2)
+    public Session(TcpClient client, int servicePort, int udpPort1, int udpPort2, PlayQueueHandler playQueueHandler)
     {
         _client = client;
         _sessionId = (ulong)Rand.NextInt64(1, long.MaxValue);
         _servicePort = servicePort;
-        _clientRtpPort = udpPort1;
-        _clientRtcpPort = udpPort2;
+        _serviceRtpPort = udpPort1;
+        _serviceRtcpPort = udpPort2;
+        _playQueueHandler = playQueueHandler;
     }
 
     public ulong GetSessionId()
@@ -63,11 +68,14 @@ a=control:1";
 
                 if (_isStreaming)
                 {
-                    await SendRtpPacket();
+                    //var task = SendRtpPacket();
+                    //await Task.Run(() => task, tokenSource.Token);
+                    await _playQueueHandler.AddNewSessionAsync(_sessionId, _clientRtpPort);
                 }
 
                 if (rtspResponse.Method == RtspMethod.TEARDOWN)
                 {
+                    await _playQueueHandler.AddSessionToTeardownQueueAsync(_sessionId);
                     tokenSource.Cancel();
                     break;
                 }
@@ -161,7 +169,7 @@ a=control:1";
         }
 
         headers.Add("Session", _sessionId.ToString());
-        headers.Add("Transport", $"{request.Headers["Transport"]};server_port:{_clientRtpPort}-{_clientRtcpPort}");
+        headers.Add("Transport", $"{request.Headers["Transport"]};server_port:{_serviceRtpPort}-{_serviceRtcpPort}");
 
         var response = new RtspResponse(request, headers, null, statusCode);
 
@@ -203,7 +211,7 @@ a=control:1";
         var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram,
             ProtocolType.Udp);
 
-        var serverAddr = new IPAddress(new byte[] { 0, 0, 0, 0 });
+        var serverAddr = new IPAddress(new byte[] { 127, 0, 0, 1 });
         var endPoint = new IPEndPoint(serverAddr, _clientRtpPort);
 
         uint packNumber = 0;
