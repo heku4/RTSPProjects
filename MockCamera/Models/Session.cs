@@ -10,6 +10,7 @@ public class Session
     private static readonly Random Rand = new();
     private readonly ulong _sessionId;
     private bool _isStreaming;
+    private readonly int _servicePort;
     private int _clientRtpPort;
     private int _clientRtcpPort;
 
@@ -17,10 +18,11 @@ public class Session
 m=video 0 RTP/AVP 26
 a=control:1";
 
-    public Session(TcpClient client, int udpPort1, int udpPort2)
+    public Session(TcpClient client, int servicePort, int udpPort1, int udpPort2)
     {
         _client = client;
         _sessionId = (ulong)Rand.NextInt64(1, long.MaxValue);
+        _servicePort = servicePort;
         _clientRtpPort = udpPort1;
         _clientRtcpPort = udpPort2;
     }
@@ -30,14 +32,14 @@ a=control:1";
         return _sessionId;
     }
 
-    public async Task StartSession(CancellationTokenSource tokenSource)
+    public async Task HandSession(CancellationTokenSource tokenSource)
     {
         await using var clientStream = _client.GetStream();
         var buffer = new byte[256];
         var requestData = string.Empty;
         int read;
 
-        while ((read = await clientStream.ReadAsync(buffer, tokenSource.Token)) != 0)
+        while ((read = await clientStream.ReadAsync(buffer, tokenSource.Token)) != 0 || !tokenSource.IsCancellationRequested)
         {
             requestData += Encoding.UTF8.GetString(buffer, 0, read);
 
@@ -121,7 +123,7 @@ a=control:1";
     {
         var headers = new Dictionary<string, string>
         {
-            { "Content-Base", "rtsp://localhost:9898" },
+            { "Content-Base", $"rtsp://localhost:{_servicePort}" },
             { "Content-type", "application/sdp" }
         };
 
@@ -219,8 +221,6 @@ a=control:1";
 
             changeFlag = !changeFlag;
             packNumber++;
-
-            Console.WriteLine(timeStamp);
 
             await Task.Delay(40);
         }
