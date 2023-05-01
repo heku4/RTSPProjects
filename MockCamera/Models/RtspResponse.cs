@@ -1,6 +1,6 @@
 namespace MockCamera.Models;
 
-public class RtspResponse: RtspMessage
+public class RtspResponse : RtspMessage
 {
     public int StatusCode { get; init; }
     public string ReasonPhrase { get; init; }
@@ -12,13 +12,10 @@ public class RtspResponse: RtspMessage
         Method = request.Method;
         SequenceNumber = request.SequenceNumber;
 
-        foreach (var pair in headers)
-        {
-            Headers.Add(pair.Key, pair.Value);
-        }
+        foreach (var pair in headers) Headers.Add(pair.Key, pair.Value);
 
         Body = bodyData;
-        
+
         StatusCode = statusCode;
 
         ReasonPhrase = statusCode switch
@@ -35,21 +32,17 @@ public class RtspResponse: RtspMessage
         var rtspResponse = this;
 
         var result = $"{rtspResponse.Protocol} {StatusCode} {ReasonPhrase}\r\n" +
-            $"CSeq: {rtspResponse.SequenceNumber}\r\n";
+                     $"CSeq: {rtspResponse.SequenceNumber}\r\n";
         if (rtspResponse.Headers.Any())
-        {
             foreach (var pair in rtspResponse.Headers)
-            {
-                result += $"{pair.Key}: {pair.Value}\r\n";   
-            }
-        }
+                result += $"{pair.Key}: {pair.Value}\r\n";
 
         if (!string.IsNullOrWhiteSpace(rtspResponse.Body))
         {
             result += $"Content-Length: {rtspResponse.Body.Length + 4}\r\n\r\n";
             result += $"{rtspResponse.Body}\r\n";
         }
-        
+
         result += "\r\n";
 
         return result;

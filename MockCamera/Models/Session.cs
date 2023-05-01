@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -8,9 +7,9 @@ namespace MockCamera.Models;
 public class Session
 {
     private readonly TcpClient _client;
-    private static readonly Random Rand = new Random();
+    private static readonly Random Rand = new();
     private readonly ulong _sessionId;
-    private bool _isStreaming = false;
+    private bool _isStreaming;
     private int _clientRtpPort;
     private int _clientRtcpPort;
 
@@ -21,7 +20,7 @@ a=control:1";
     public Session(TcpClient client, int udpPort1, int udpPort2)
     {
         _client = client;
-        _sessionId = (ulong) Rand.NextInt64(1, Int64.MaxValue);
+        _sessionId = (ulong)Rand.NextInt64(1, long.MaxValue);
         _clientRtpPort = udpPort1;
         _clientRtcpPort = udpPort2;
     }
@@ -35,50 +34,28 @@ a=control:1";
     {
         await using var clientStream = _client.GetStream();
         var buffer = new byte[256];
-        var requestData = string.Empty; 
+        var requestData = string.Empty;
         int read;
-    
+
         while ((read = await clientStream.ReadAsync(buffer, tokenSource.Token)) != 0)
         {
             requestData += Encoding.UTF8.GetString(buffer, 0, read);
 
-            if (Debugger.IsAttached)
-            {
-                #region DEBUG raw request
-
-                Console.ForegroundColor = ConsoleColor.DarkMagenta;
-                Console.Write($"DEBUG LEVEL REQUEST: {BitConverter.ToString(buffer[0..read]).Replace("-", " ")}");
-                Console.ForegroundColor = ConsoleColor.DarkCyan;
-
-                #endregion
-            }
-            
             Array.Clear(buffer, 0, buffer.Length);
 
             if (requestData.Contains("\r\n\r\n"))
             {
                 var request = new RtspRequest(requestData);
-
-                Console.WriteLine();
                 Console.WriteLine(requestData);
 
+                requestData = string.Empty;
+
+
                 var rtspResponse = HandleRequest(request);
-                
-                
+
+
                 var response = Encoding.UTF8.GetBytes(rtspResponse.Format());
 
-                #region DEBUG
-
-                if (Debugger.IsAttached)
-                {
-                    Console.ForegroundColor = ConsoleColor.DarkRed;
-                    Console.WriteLine($"DEBUG LEVEL RESPONSE: {BitConverter.ToString(response).Replace("-", " ")}");
-                    Console.ForegroundColor = ConsoleColor.DarkCyan;
-
-                }
-                
-                #endregion
-                
                 Console.WriteLine(rtspResponse.Format());
                 await clientStream.WriteAsync(response, tokenSource.Token);
 
@@ -86,7 +63,7 @@ a=control:1";
                 {
                     await SendRtpPacket();
                 }
-                
+
                 if (rtspResponse.Method == RtspMethod.TEARDOWN)
                 {
                     tokenSource.Cancel();
@@ -99,7 +76,7 @@ a=control:1";
     private RtspResponse HandleRequest(RtspRequest request)
     {
         RtspResponse rtspResponse;
-        
+
         switch (request.Method)
         {
             case RtspMethod.OPTIONS:
@@ -121,7 +98,7 @@ a=control:1";
                 rtspResponse = new RtspResponse(request, new Dictionary<string, string>(), null, 404);
                 break;
         }
-        
+
         return rtspResponse;
     }
 
@@ -132,14 +109,14 @@ a=control:1";
             RtspMethod.DESCRIBE.ToString(), RtspMethod.SETUP.ToString(),
             RtspMethod.PLAY.ToString(), RtspMethod.TEARDOWN.ToString()
         };
-        
+
         var headers = new Dictionary<string, string> { { "Public", string.Join(", ", supportedMethods) } };
 
-        var response = new RtspResponse(request, headers, null,200);
+        var response = new RtspResponse(request, headers, null, 200);
 
         return response;
     }
-    
+
     private RtspResponse HandleDescribeRequest(RtspRequest request)
     {
         var headers = new Dictionary<string, string>
@@ -152,13 +129,12 @@ a=control:1";
 
         return response;
     }
-    
+
     private RtspResponse HandleSetupRequest(RtspRequest request)
     {
-
         var statusCode = 200;
         var headers = new Dictionary<string, string>();
-        
+
         var clientPortsHeaderData = request.Headers["Transport"].Trim().Split("=");
         if (clientPortsHeaderData.Length != 2)
         {
@@ -166,7 +142,7 @@ a=control:1";
         }
 
         var ports = clientPortsHeaderData[^1].Split("-");
-        
+
         if (ports.Length != 2)
         {
             return new RtspResponse(request, headers, null, 400);
@@ -176,7 +152,6 @@ a=control:1";
         {
             _clientRtpPort = Convert.ToInt32(ports[0]);
             _clientRtcpPort = Convert.ToInt32(ports[1]);
-
         }
         catch
         {
@@ -190,22 +165,21 @@ a=control:1";
 
         return response;
     }
-    
+
     private RtspResponse HandlePlayRequest(RtspRequest request)
     {
         var headers = new Dictionary<string, string>
         {
-            { "Session", _sessionId.ToString() },
-            { "Transport", $"{request.Headers["Transport"]};server_port:{7057}-{7058}" }
+            { "Session", _sessionId.ToString() }
         };
-        
+
         var response = new RtspResponse(request, headers, null, 200);
 
         _isStreaming = true;
-        
+
         return response;
     }
-    
+
     private RtspResponse HandleTeardownRequest(RtspRequest request)
     {
         var headers = new Dictionary<string, string>();
@@ -218,29 +192,39 @@ a=control:1";
         var response = new RtspResponse(request, headers, null, 200);
 
         _isStreaming = false;
-        
+
         return response;
     }
 
     private async Task SendRtpPacket()
     {
-        using var udpWriter = new UdpClient(_clientRtpPort, AddressFamily.Packet);
+        var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram,
+            ProtocolType.Udp);
+
+        var serverAddr = new IPAddress(new byte[] { 0, 0, 0, 0 });
+        var endPoint = new IPEndPoint(serverAddr, _clientRtpPort);
+
         uint packNumber = 0;
+        uint timeStamp = 0;
         var changeFlag = false;
-        
+
         Console.WriteLine($"Starting send packets on {_sessionId}");
-        
+
         while (_isStreaming)
         {
-            uint timeStamp = 3600;
+             timeStamp += 3600;
 
             var dataToSend = RtpPacket.Prepare(timeStamp, packNumber, changeFlag);
-            await udpWriter.Client.SendAsync(dataToSend);
-            changeFlag = !changeFlag;
+            await socket.SendToAsync(dataToSend, endPoint);
 
-            await Task.Delay(40 * 3600);
+            changeFlag = !changeFlag;
+            packNumber++;
+
+            Console.WriteLine(timeStamp);
+
+            await Task.Delay(40);
         }
-        
+
         Console.WriteLine($"Stopping send packets on {_sessionId}");
     }
 }
