@@ -1,6 +1,6 @@
 ﻿namespace MockCamera.Models;
 
-public static class RtpPacket
+public readonly struct RtpPacket
 {
     private const byte VersionRtpPacket = 0x80;
     private const byte PayloadTypeRtpPacket = 0x9a;
@@ -16,7 +16,7 @@ public static class RtpPacket
     private const byte PayloadWidth = 6;
     private const byte PayloadHeight = 4;
 
-    private static readonly byte[] SampleChannelA =
+    private readonly byte[] _sampleChannelA =
     {
         0xf8, 0xbe, 0x8a, 0x28, 0xaf, 0xe5, 0x33, 0xfd,
         0xfc, 0x0a, 0x28, 0xa2, 0x80, 0x0a, 0x28, 0xa2,
@@ -24,7 +24,7 @@ public static class RtpPacket
         0x80, 0x0a, 0x28, 0xa2, 0x80, 0x3f, 0xff, 0xd9
     };
 
-    private static readonly byte[] SampleChannelB =
+    private readonly byte[] _sampleChannelB =
     {
         0xf5, 0x8a, 0x28, 0xa2, 0xbf, 0xca, 0xf3, 0xfc,
         0x53, 0x0a, 0x28, 0xa2, 0x80, 0x0a, 0x28, 0xa2,
@@ -32,7 +32,11 @@ public static class RtpPacket
         0x80, 0x0a, 0x28, 0xa2, 0x80, 0x3f, 0xff, 0xd9
     };
 
-    public static byte[] Prepare(uint timeStamp, uint packetSequenceNumber, bool chanelFlag)
+    public RtpPacket()
+    {
+    }
+
+    public byte[] Prepare(uint timeStamp, uint packetSequenceNumber, bool chanelFlag)
     {
         var rtpDataBuffer = new byte[20];
         // RTP headers https://www.rfc-editor.org/rfc/rfc3550.html
@@ -93,17 +97,17 @@ public static class RtpPacket
 
         if (chanelFlag)
         {
-            var resultArr = new byte[rtpDataBuffer.Length + SampleChannelA.Length];
-            Buffer.BlockCopy(rtpDataBuffer, 0, resultArr, 0, rtpDataBuffer.Length);
-            Buffer.BlockCopy(SampleChannelA, 0, resultArr, rtpDataBuffer.Length, SampleChannelA.Length);
-            return resultArr;
+            var resultBytes = new byte[rtpDataBuffer.Length + _sampleChannelA.Length];
+            Buffer.BlockCopy(rtpDataBuffer, 0, resultBytes, 0, rtpDataBuffer.Length);
+            Buffer.BlockCopy(_sampleChannelA, 0, resultBytes, rtpDataBuffer.Length, _sampleChannelA.Length);
+            return resultBytes;
         }
         else
         {
-            var resultArr = new byte[rtpDataBuffer.Length + SampleChannelB.Length];
-            Buffer.BlockCopy(rtpDataBuffer, 0, resultArr, 0, rtpDataBuffer.Length);
-            Buffer.BlockCopy(SampleChannelB, 0, resultArr, rtpDataBuffer.Length, SampleChannelB.Length);
-            return resultArr;
+            var resultBytes = new byte[rtpDataBuffer.Length + _sampleChannelB.Length];
+            Buffer.BlockCopy(rtpDataBuffer, 0, resultBytes, 0, rtpDataBuffer.Length);
+            Buffer.BlockCopy(_sampleChannelB, 0, resultBytes, rtpDataBuffer.Length, _sampleChannelB.Length);
+            return resultBytes;
         }
     }
 }

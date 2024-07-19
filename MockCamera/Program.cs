@@ -26,8 +26,7 @@ while (!tokenSource.IsCancellationRequested)
         var client = await tcpListener.AcceptTcpClientAsync();
         var session = new Session(client, udpPortNumber1, udpPortNumber2);
 
-        Console.WriteLine(
-            $"{Environment.NewLine}Session {session.GetSessionId()} started at: {DateTime.Now}{Environment.NewLine}");
+        Console.WriteLine($"Session {session.GetSessionId()} started at: {DateTime.Now}");
 
         var thread = new Thread(() =>
         {

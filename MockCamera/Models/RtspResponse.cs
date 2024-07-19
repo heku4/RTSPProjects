@@ -6,13 +6,19 @@ public class RtspResponse : RtspMessage
     public string ReasonPhrase { get; init; }
     public string? Body { get; init; }
 
-    public RtspResponse(RtspRequest request, Dictionary<string, string> headers, string? bodyData, int statusCode)
+    public RtspResponse(RtspRequest request, Dictionary<string, string>? headers, string? bodyData, int statusCode)
     {
         Protocol = request.Protocol;
         Method = request.Method;
         SequenceNumber = request.SequenceNumber;
 
-        foreach (var pair in headers) Headers.Add(pair.Key, pair.Value);
+        if (headers is not null && headers.Any())
+        {
+            foreach (var pair in headers)
+            {
+                Headers.Add(pair.Key, pair.Value);
+            }
+        }
 
         Body = bodyData;
 
@@ -33,9 +39,11 @@ public class RtspResponse : RtspMessage
 
         var result = $"{rtspResponse.Protocol} {StatusCode} {ReasonPhrase}\r\n" +
                      $"CSeq: {rtspResponse.SequenceNumber}\r\n";
-        if (rtspResponse.Headers.Any())
-            foreach (var pair in rtspResponse.Headers)
-                result += $"{pair.Key}: {pair.Value}\r\n";
+
+        foreach (var pair in rtspResponse.Headers)
+        {
+            result += $"{pair.Key}: {pair.Value}\r\n";
+        }
 
         if (!string.IsNullOrWhiteSpace(rtspResponse.Body))
         {

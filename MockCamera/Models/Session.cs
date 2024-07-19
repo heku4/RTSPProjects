@@ -50,13 +50,12 @@ a=control:1";
 
                 requestData = string.Empty;
 
-
                 var rtspResponse = HandleRequest(request);
-
 
                 var response = Encoding.UTF8.GetBytes(rtspResponse.Format());
 
                 Console.WriteLine(rtspResponse.Format());
+
                 await clientStream.WriteAsync(response, tokenSource.Token);
 
                 if (_isStreaming)
@@ -75,40 +74,22 @@ a=control:1";
 
     private RtspResponse HandleRequest(RtspRequest request)
     {
-        RtspResponse rtspResponse;
-
-        switch (request.Method)
+        RtspResponse rtspResponse = request.Method switch
         {
-            case RtspMethod.OPTIONS:
-                rtspResponse = HandleOptionsRequest(request);
-                break;
-            case RtspMethod.DESCRIBE:
-                rtspResponse = HandleDescribeRequest(request);
-                break;
-            case RtspMethod.SETUP:
-                rtspResponse = HandleSetupRequest(request);
-                break;
-            case RtspMethod.PLAY:
-                rtspResponse = HandlePlayRequest(request);
-                break;
-            case RtspMethod.TEARDOWN:
-                rtspResponse = HandleTeardownRequest(request);
-                break;
-            default:
-                rtspResponse = new RtspResponse(request, new Dictionary<string, string>(), null, 404);
-                break;
-        }
+            RtspMethod.OPTIONS => HandleOptionsRequest(request),
+            RtspMethod.DESCRIBE => HandleDescribeRequest(request),
+            RtspMethod.SETUP => HandleSetupRequest(request),
+            RtspMethod.PLAY => HandlePlayRequest(request),
+            RtspMethod.TEARDOWN => HandleTeardownRequest(request),
+            _ => new RtspResponse(request, null,null, 404)
+        };
 
         return rtspResponse;
     }
 
     private RtspResponse HandleOptionsRequest(RtspRequest request)
     {
-        var supportedMethods = new[]
-        {
-            RtspMethod.DESCRIBE.ToString(), RtspMethod.SETUP.ToString(),
-            RtspMethod.PLAY.ToString(), RtspMethod.TEARDOWN.ToString()
-        };
+        var supportedMethods = Enum.GetNames(typeof(RtspMethod));
 
         var headers = new Dictionary<string, string> { { "Public", string.Join(", ", supportedMethods) } };
 
@@ -136,10 +117,7 @@ a=control:1";
         var headers = new Dictionary<string, string>();
 
         var clientPortsHeaderData = request.Headers["Transport"].Trim().Split("=");
-        if (clientPortsHeaderData.Length != 2)
-        {
-            return new RtspResponse(request, headers, null, 400);
-        }
+        if (clientPortsHeaderData.Length != 2) return new RtspResponse(request, headers, null, 400);
 
         var ports = clientPortsHeaderData[^1].Split("-");
 
@@ -198,7 +176,9 @@ a=control:1";
 
     private async Task SendRtpPacket()
     {
-        var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram,
+        var socket = new Socket(
+            AddressFamily.InterNetwork,
+            SocketType.Dgram,
             ProtocolType.Udp);
 
         var serverAddr = new IPAddress(new byte[] { 127, 0, 0, 1 });
@@ -210,11 +190,13 @@ a=control:1";
 
         Console.WriteLine($"Starting send packets on {_sessionId}");
 
+        var packet = new RtpPacket();
+
         while (_isStreaming)
         {
-             timeStamp += 3600;
+            timeStamp += 3600;
 
-            var dataToSend = RtpPacket.Prepare(timeStamp, packNumber, changeFlag);
+            var dataToSend = packet.Prepare(timeStamp, packNumber, changeFlag);
             await socket.SendToAsync(dataToSend, endPoint);
 
             changeFlag = !changeFlag;
