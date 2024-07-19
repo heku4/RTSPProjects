@@ -7,4 +7,4 @@ In general this is a simple app which can produce multiple RTSP streams to any c
 Now it works on port `9898` and a client (for example VLC) can connect 
 to the address `rtsp://localhost:9898` and then consume data from rtp-port `10897`.
 
-![Screenshot](./Screenshot.jpg)
+![Screenshot](Screenshot.jpg)
