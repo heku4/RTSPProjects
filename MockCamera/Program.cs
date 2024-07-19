@@ -14,9 +14,9 @@ Console.Clear();
 Console.ForegroundColor = ConsoleColor.Green;
 
 Console.WriteLine("App started");
-Console.WriteLine($"Main port binded on: {mainPortNumber}");
-Console.WriteLine($"UDP port for RTP binded on: {udpPortNumber1}");
-Console.WriteLine($"UDP port for RTCP binded on: {udpPortNumber2}");
+Console.WriteLine($"Main port bound on: {mainPortNumber}");
+Console.WriteLine($"UDP port for RTP bound on: {udpPortNumber1}");
+Console.WriteLine($"UDP port for RTCP bound on: {udpPortNumber2}");
 
 Console.ForegroundColor = ConsoleColor.DarkCyan;
 
@@ -29,7 +29,13 @@ while (!tokenSource.IsCancellationRequested)
         Console.WriteLine(
             $"{Environment.NewLine}Session {session.GetSessionId()} started at: {DateTime.Now}{Environment.NewLine}");
 
-        await Task.Run(() => session.StartSession(tokenSource), tokenSource.Token);
+        var thread = new Thread(() =>
+        {
+            Task.Run(() => session.StartSession(tokenSource), tokenSource.Token);
+        });
+
+        thread.Start();
+        thread.Join();
     }
     catch (Exception e)
     {

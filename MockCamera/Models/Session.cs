@@ -201,7 +201,7 @@ a=control:1";
         var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram,
             ProtocolType.Udp);
 
-        var serverAddr = new IPAddress(new byte[] { 0, 0, 0, 0 });
+        var serverAddr = new IPAddress(new byte[] { 127, 0, 0, 1 });
         var endPoint = new IPEndPoint(serverAddr, _clientRtpPort);
 
         uint packNumber = 0;
@@ -219,8 +219,6 @@ a=control:1";
 
             changeFlag = !changeFlag;
             packNumber++;
-
-            Console.WriteLine(timeStamp);
 
             await Task.Delay(40);
         }
