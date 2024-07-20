@@ -2,9 +2,11 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
-namespace MockCamera.Models;
+using MockCamera.Models;
 
-public class Session : IDisposable
+namespace MockCamera.Services;
+
+public class SessionHandler : IDisposable
 {
     private readonly TcpClient _tcpClient;
     private static readonly Random Rand = new();
@@ -18,7 +20,7 @@ public class Session : IDisposable
 m=video 0 RTP/AVP 26
 a=control:1";
 
-    public Session(TcpClient client, int serverRtspPort)
+    public SessionHandler(TcpClient client, int serverRtspPort)
     {
         _tcpClient = client;
         _sessionId = (ulong)Rand.NextInt64(1, long.MaxValue);

@@ -1,6 +1,8 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+
+using MockCamera.Services;
 using MockCamera.Options;
 
 var host = Host.CreateDefaultBuilder(args)
