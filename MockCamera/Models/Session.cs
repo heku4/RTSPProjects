@@ -17,12 +17,12 @@ public class Session
 m=video 0 RTP/AVP 26
 a=control:1";
 
-    public Session(TcpClient client, int udpPort1, int udpPort2)
+    public Session(TcpClient client, int rtpPort, int rtcpPort)
     {
         _client = client;
         _sessionId = (ulong)Rand.NextInt64(1, long.MaxValue);
-        _clientRtpPort = udpPort1;
-        _clientRtcpPort = udpPort2;
+        _clientRtpPort = rtpPort;
+        _clientRtcpPort = rtcpPort;
     }
 
     public ulong GetSessionId()
