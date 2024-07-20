@@ -90,30 +90,28 @@ a=control:1";
     {
         RtspResponse rtspResponse = request.Method switch
         {
-            RtspMethod.OPTIONS => HandleOptionsRequest(request),
-            RtspMethod.DESCRIBE => HandleDescribeRequest(request),
-            RtspMethod.SETUP => HandleSetupRequest(request),
+            RtspMethod.OPTIONS => HandleOptions(request),
+            RtspMethod.DESCRIBE => HandleDescribe(request),
+            RtspMethod.SETUP => HandleSetup(request),
             RtspMethod.PAUSE => HandlePause(request),
-            RtspMethod.PLAY => HandlePlayRequest(request),
-            RtspMethod.TEARDOWN => HandleTeardownRequest(request),
+            RtspMethod.PLAY => HandlePlay(request),
+            RtspMethod.TEARDOWN => HandleTeardown(request),
             _ => new RtspResponse(request, null, null, 404)
         };
 
         return rtspResponse;
     }
 
-    private RtspResponse HandleOptionsRequest(RtspRequest request)
+    private RtspResponse HandleOptions(RtspRequest request)
     {
         var supportedMethods = Enum.GetNames(typeof(RtspMethod));
 
         var headers = new Dictionary<string, string> { { "Public", string.Join(", ", supportedMethods) } };
 
-        var response = new RtspResponse(request, headers, null, 200);
-
-        return response;
+        return new RtspResponse(request, headers, null, 200);
     }
 
-    private RtspResponse HandleDescribeRequest(RtspRequest request)
+    private RtspResponse HandleDescribe(RtspRequest request)
     {
         var headers = new Dictionary<string, string>
         {
@@ -121,12 +119,10 @@ a=control:1";
             { "Content-type", "application/sdp" }
         };
 
-        var response = new RtspResponse(request, headers, ContentData, 200);
-
-        return response;
+        return new RtspResponse(request, headers, ContentData, 200);
     }
 
-    private RtspResponse HandleSetupRequest(RtspRequest request)
+    private RtspResponse HandleSetup(RtspRequest request)
     {
         var statusCode = 200;
         var headers = new Dictionary<string, string>();
@@ -154,9 +150,7 @@ a=control:1";
         headers.Add("Session", _sessionId.ToString());
         headers.Add("Transport", $"{request.Headers["Transport"]};server_port:{_clientRtpPort}-{_clientRtcpPort}");
 
-        var response = new RtspResponse(request, headers, null, statusCode);
-
-        return response;
+        return new RtspResponse(request, headers, null, statusCode);
     }
 
     private RtspResponse HandlePause(RtspRequest request)
@@ -166,28 +160,24 @@ a=control:1";
             { "Session", _sessionId.ToString() }
         };
 
-        var response = new RtspResponse(request, headers, null, 200);
-
         _isStreaming = false;
 
-        return response;
+        return new RtspResponse(request, headers, null, 200);
     }
 
-    private RtspResponse HandlePlayRequest(RtspRequest request)
+    private RtspResponse HandlePlay(RtspRequest request)
     {
         var headers = new Dictionary<string, string>
         {
             { "Session", _sessionId.ToString() }
         };
 
-        var response = new RtspResponse(request, headers, null, 200);
-
         _isStreaming = true;
 
-        return response;
+        return new RtspResponse(request, headers, null, 200);;
     }
 
-    private RtspResponse HandleTeardownRequest(RtspRequest request)
+    private RtspResponse HandleTeardown(RtspRequest request)
     {
         var headers = new Dictionary<string, string>();
 
@@ -196,18 +186,12 @@ a=control:1";
             headers.Add("Session", request.Headers["Session"]);
         }
 
-        var response = new RtspResponse(request, headers, null, 200);
-
-        _isStreaming = false;
-
-        Dispose();
-
-        return response;
+        return new RtspResponse(request, headers, null, 200);
     }
 
     private async Task SendRtpPacket()
     {
-        var socket = new Socket(
+        using var socket = new Socket(
             AddressFamily.InterNetwork,
             SocketType.Dgram,
             ProtocolType.Udp);
@@ -226,6 +210,7 @@ a=control:1";
             timeStamp += 3600;
 
             var dataToSend = packet.Prepare(timeStamp, packNumber, changeFlag);
+
             await socket.SendToAsync(dataToSend, endPoint);
 
             changeFlag = !changeFlag;

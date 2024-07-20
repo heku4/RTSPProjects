@@ -41,18 +41,4 @@ public class RtspListener
             }
         }
     }
-
-    private Task HandleSession(TcpClient tcpClient, CancellationToken cancellationToken)
-    {
-        var session = new Session(tcpClient, _serverOptions.RtspPort);
-        var thread = new Thread(() =>
-                {
-                    Task.Run(() => session.StartSession(new CancellationTokenSource()), cancellationToken);
-                });
-
-        thread.Start();
-        thread.Join();
-
-        return Task.CompletedTask;
-    }
 }
