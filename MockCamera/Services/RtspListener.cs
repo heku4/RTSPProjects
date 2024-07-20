@@ -2,7 +2,8 @@ using System.Net;
 using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
 using MockCamera.Options;
-using MockCamera.Models;
+
+namespace MockCamera.Services;
 
 public class RtspListener
 {
@@ -25,7 +26,7 @@ public class RtspListener
             try
             {
                 var client = await tcpListener.AcceptTcpClientAsync(cancellationToken);
-                var session = new Session(client, _serverOptions.RtspPort);
+                var session = new SessionHandler(client, _serverOptions.RtspPort);
 
                 var thread = new Thread(() =>
                 {
