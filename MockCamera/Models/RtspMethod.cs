@@ -6,7 +6,6 @@ public enum RtspMethod
     OPTIONS,
     PLAY,
     PAUSE,
-    RECORD,
     SETUP,
     TEARDOWN
 }
