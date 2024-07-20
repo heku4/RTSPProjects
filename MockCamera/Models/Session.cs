@@ -57,10 +57,9 @@ a=control:1";
 
                     if (_isStreaming)
                     {
-                        //await SendRtpPacket();
-                        var streamingThread = new Thread(async () => 
+                        var streamingThread = new Thread(() => 
                         {
-                            await SendRtpPacket();
+                            Task.Run(() => SendRtpPacket());
                         });
 
                         streamingThread.Start();
@@ -220,8 +219,6 @@ a=control:1";
         uint timeStamp = 0;
         var changeFlag = false;
 
-        Console.WriteLine($"Starting send packets on {_sessionId}");
-
         var packet = new RtpPacket();
 
         while (_isStreaming)
@@ -236,8 +233,6 @@ a=control:1";
 
             await Task.Delay(40);
         }
-
-        Console.WriteLine($"Stopping send packets on {_sessionId}");
     }
 
     public void Dispose()
