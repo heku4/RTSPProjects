@@ -24,10 +24,8 @@ public class RtspListener
         {
             try
             {
-                var client = await tcpListener.AcceptTcpClientAsync();
-                var session = new Session(client, _serverOptions.RtpPort, _serverOptions.RtcpPort);
-
-                Console.WriteLine($"Session {session.GetSessionId()} started at: {DateTime.Now}");
+                var client = await tcpListener.AcceptTcpClientAsync(cancellationToken);
+                var session = new Session(client, _serverOptions.RtspPort);
 
                 var thread = new Thread(() =>
                 {
@@ -42,5 +40,19 @@ public class RtspListener
                 _logger.LogError(e, e.Message);
             }
         }
+    }
+
+    private Task HandleSession(TcpClient tcpClient, CancellationToken cancellationToken)
+    {
+        var session = new Session(tcpClient, _serverOptions.RtspPort);
+        var thread = new Thread(() =>
+                {
+                    Task.Run(() => session.StartSession(new CancellationTokenSource()), cancellationToken);
+                });
+
+        thread.Start();
+        thread.Join();
+
+        return Task.CompletedTask;
     }
 }

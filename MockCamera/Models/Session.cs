@@ -4,35 +4,30 @@ using System.Text;
 
 namespace MockCamera.Models;
 
-public class Session
+public class Session : IDisposable
 {
-    private readonly TcpClient _client;
+    private readonly TcpClient _tcpClient;
     private static readonly Random Rand = new();
     private readonly ulong _sessionId;
     private bool _isStreaming;
     private int _clientRtpPort;
     private int _clientRtcpPort;
+    private int _serverRtspPort;
 
     private const string ContentData = @"v=0
 m=video 0 RTP/AVP 26
 a=control:1";
 
-    public Session(TcpClient client, int rtpPort, int rtcpPort)
+    public Session(TcpClient client, int serverRtspPort)
     {
-        _client = client;
+        _tcpClient = client;
         _sessionId = (ulong)Rand.NextInt64(1, long.MaxValue);
-        _clientRtpPort = rtpPort;
-        _clientRtcpPort = rtcpPort;
-    }
-
-    public ulong GetSessionId()
-    {
-        return _sessionId;
+        _serverRtspPort = serverRtspPort;
     }
 
     public async Task StartSession(CancellationTokenSource tokenSource)
     {
-        await using var clientStream = _client.GetStream();
+        await using var clientStream = _tcpClient.GetStream();
         var buffer = new byte[256];
         var requestData = string.Empty;
         int read;
@@ -56,17 +51,37 @@ a=control:1";
 
                 Console.WriteLine(rtspResponse.Format());
 
-                await clientStream.WriteAsync(response, tokenSource.Token);
-
-                if (_isStreaming)
+                if (rtspResponse.Method is not RtspMethod.TEARDOWN)
                 {
-                    await SendRtpPacket();
+                    await clientStream.WriteAsync(response, tokenSource.Token);
+
+                    if (_isStreaming)
+                    {
+                        //await SendRtpPacket();
+                        var streamingThread = new Thread(async () => 
+                        {
+                            await SendRtpPacket();
+                        });
+
+                        streamingThread.Start();
+                        streamingThread.Join();
+                    }
                 }
-
-                if (rtspResponse.Method == RtspMethod.TEARDOWN)
+                else
                 {
-                    tokenSource.Cancel();
-                    break;
+                    try
+                    {
+                        await clientStream.WriteAsync(response, tokenSource.Token);
+                    }
+                    catch(ObjectDisposedException e)
+                    {
+                        // client already closed the stream
+                    }
+                    finally
+                    {
+                        Dispose();
+                        tokenSource.Cancel();
+                    }
                 }
             }
         }
@@ -79,9 +94,10 @@ a=control:1";
             RtspMethod.OPTIONS => HandleOptionsRequest(request),
             RtspMethod.DESCRIBE => HandleDescribeRequest(request),
             RtspMethod.SETUP => HandleSetupRequest(request),
+            RtspMethod.PAUSE => HandlePause(request),
             RtspMethod.PLAY => HandlePlayRequest(request),
             RtspMethod.TEARDOWN => HandleTeardownRequest(request),
-            _ => new RtspResponse(request, null,null, 404)
+            _ => new RtspResponse(request, null, null, 404)
         };
 
         return rtspResponse;
@@ -102,7 +118,7 @@ a=control:1";
     {
         var headers = new Dictionary<string, string>
         {
-            { "Content-Base", "rtsp://localhost:9898" },
+            { "Content-Base", $"rtsp://localhost:{_serverRtspPort}" },
             { "Content-type", "application/sdp" }
         };
 
@@ -144,6 +160,20 @@ a=control:1";
         return response;
     }
 
+    private RtspResponse HandlePause(RtspRequest request)
+    {
+        var headers = new Dictionary<string, string>
+        {
+            { "Session", _sessionId.ToString() }
+        };
+
+        var response = new RtspResponse(request, headers, null, 200);
+
+        _isStreaming = false;
+
+        return response;
+    }
+
     private RtspResponse HandlePlayRequest(RtspRequest request)
     {
         var headers = new Dictionary<string, string>
@@ -170,6 +200,8 @@ a=control:1";
         var response = new RtspResponse(request, headers, null, 200);
 
         _isStreaming = false;
+
+        Dispose();
 
         return response;
     }
@@ -206,5 +238,10 @@ a=control:1";
         }
 
         Console.WriteLine($"Stopping send packets on {_sessionId}");
+    }
+
+    public void Dispose()
+    {
+        _tcpClient.Dispose();
     }
 }
